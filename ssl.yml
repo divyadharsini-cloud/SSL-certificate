@@ -21,11 +21,13 @@
       register: ssl_raw
       changed_when: false
 
-    - name: Combine results into one clean string
+    - name: Initialize report header
       set_fact:
-        ssl_report: |
-          {{ ssl_report | default('SSL Expiry Report:') }}
-          {{ item.stdout }}
+        ssl_report: "SSL Expiry Report\n-----------------"
+
+    - name: Build consolidated output
+      set_fact:
+        ssl_report: "{{ ssl_report }}\n{{ item.stdout }}"
       loop: "{{ ssl_raw.results }}"
 
     - name: Print final consolidated output

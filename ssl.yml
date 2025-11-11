@@ -9,6 +9,8 @@
       - google.com
       - uatredcap.aravind.org
       - aecsredap.aravind.org
+    warn_days: 365
+      
   tasks:
     - name: Check SSL expiry and get days left
       shell: |

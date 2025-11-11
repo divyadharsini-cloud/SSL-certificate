@@ -24,7 +24,7 @@
     - name: Combine results into one clean string
       set_fact:
         ssl_report: |
-          {{ ssl_report | default('SSL Expiry Report\n-----------------') }}
+          {{ ssl_report | default('SSL Expiry Report:') }}
           {{ item.stdout }}
       loop: "{{ ssl_raw.results }}"
 

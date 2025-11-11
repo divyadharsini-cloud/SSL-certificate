@@ -6,6 +6,7 @@
   vars:
     sites:
       - awx.aravind.org
+      - google.com
 
   tasks:
     - name: Check SSL expiry and prepare clean output

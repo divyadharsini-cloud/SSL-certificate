@@ -1,31 +1,31 @@
 ---
-- name: Check SSL expiry
+- name: Check SSL expiry (simple clean output)
   hosts: localhost
   gather_facts: no
 
   vars:
     sites:
       - awx.aravind.org
-    warn_days: 365   # alert threshold
+    warn_days: 365
 
   tasks:
-    - name: Get SSL expiry
+    - name: Get SSL expiry in days
       shell: |
         end=$(echo | openssl s_client -servername {{ item }} -connect {{ item }}:443 2>/dev/null \
               | openssl x509 -noout -enddate | cut -d= -f2)
         end_seconds=$(date -d "$end" +%s)
         now_seconds=$(date +%s)
         echo $(( (end_seconds - now_seconds) / 86400 ))
-      register: result
+      register: ssl_results
       loop: "{{ sites }}"
 
-    - name: Show results
+    - name: Print clean results
       debug:
-        msg: "{{ item.item }} expires in {{ item.stdout }} days"
-      loop: "{{ result.results }}"
+        msg: "{{ item.item }} → {{ item.stdout }} days remaining"
+      loop: "{{ ssl_results.results }}"
 
-    - name: Fail if nearing expiry
+    - name: Alert if expiring soon
       fail:
-        msg: "{{ item.item }} certificate expires in {{ item.stdout }} days!"
+        msg: "⚠️ {{ item.item }} certificate expires in {{ item.stdout }} days!"
       when: item.stdout | int < warn_days
-      loop: "{{ result.results }}"
+      loop: "{{ ssl_results.results }}"

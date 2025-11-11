@@ -7,7 +7,8 @@
     sites:
       - awx.aravind.org
       - google.com
-
+      - uatredcap.aravind.org
+      - aecsredap.aravind.org
   tasks:
     - name: Check SSL expiry and get days left
       shell: |

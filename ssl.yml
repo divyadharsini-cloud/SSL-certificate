@@ -32,4 +32,4 @@
 
     - name: Print final clean output only
       debug:
-        msg: "{{ final_report }}"
+        var: final_report

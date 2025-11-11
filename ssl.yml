@@ -8,59 +8,65 @@
       - google.com
       - awx.aravind.org
       - elk-stack.aravind.org
-    
-    warn_days: 30        # Alert if expiry is less than this
-    notification_recipients: "divyadharsini@aravind.org,srinisudhan.balaji@aravind.org"   # <-- Change this
+    warn_days: 30
+    notification_recipients: "divyadharsini@aravind.org,srinisudhan.balaji@aravind.org"
 
   tasks:
-
     - name: Fetch certificate expiry details safely
       shell: |
         set -o pipefail
         OUT="$(echo | openssl s_client -servername {{ item }} -connect {{ item }}:443 2>/dev/null || true)"
         if ! echo "$OUT" | grep -q "BEGIN CERTIFICATE"; then
-          echo "{{ item }}|ERROR|Connection failed or no certificate found"
+          echo "{{ item }}|ERROR|Connection failed or no certificate received"
           exit 0
         fi
 
         END=$(echo "$OUT" | openssl x509 -noout -enddate 2>/dev/null | cut -d= -f2)
+        if [ -z "$END" ]; then
+          echo "{{ item }}|ERROR|Could not extract enddate"
+          exit 0
+        fi
 
         end_ts=$(date -d "$END" +%s 2>/dev/null || date -j -f "%b %e %T %Y %Z" "$END" +%s 2>/dev/null)
-        now=$(date +%s)
+        if [ -z "$end_ts" ]; then
+          echo "{{ item }}|ERROR|Unrecognized date format: $END"
+          exit 0
+        fi
 
+        now=$(date +%s)
         days=$(( (end_ts - now) / 86400 ))
         echo "{{ item }}|OK|${days}|${END}"
       register: ssl_raw
       loop: "{{ sites }}"
       changed_when: false
 
-    - name: Build SSL report for display and email
+    - name: Build SSL report
       set_fact:
         final_report: |
           SSL Expiry Report
           -----------------
           {% for r in ssl_raw.results %}
-          {% set p = r.stdout.split('|') %}
-          {% if p[1] == "OK" %}
-          {{ p[0] }}: {{ p[2] }} days left (expires: {{ p[3] }})
+          {% set parts = r.stdout.split('|') %}
+          {% if parts[1] == 'OK' %}
+          {{ parts[0] }}: {{ parts[2] }} days left (expires: {{ parts[3] }})
           {% else %}
-          {{ p[0] }}: {{ p[2] }}
+          {{ parts[0] }}: {{ parts[2] }}
           {% endif %}
           {% endfor %}
 
         expiring_sites: |
           {% for r in ssl_raw.results %}
-          {% set p = r.stdout.split('|') %}
-          {% if p[1] == "OK" and (p[2]|int) < warn_days %}
-          {{ p[0] }}: {{ p[2] }} days left
+          {% set parts = r.stdout.split('|') %}
+          {% if parts[1] == 'OK' and (parts[2]|int) < warn_days %}
+          {{ parts[0] }}: {{ parts[2] }} days left
           {% endif %}
           {% endfor %}
 
-    - name: Show final SSL report (clean multi-line output)
+    - name: Show final report
       debug:
         msg: "{{ final_report }}"
 
-    - name: Send alert email when certificates are near expiry
+    - name: Send alert email when any certificate is near expiry
       when: expiring_sites | trim != ""
       run_once: true
       delegate_to: localhost
@@ -72,16 +78,16 @@
         password: "{{ lookup('env','EMAIL_PASSWORD') }}"
         to: "{{ notification_recipients }}"
         from: "{{ lookup('env','EMAIL_USER') }}"
-        subject: "⚠️ SSL Certificate Expiry Alert ({{ warn_days }} days threshold)"
+        subject: "⚠️ SSL Certificate Expiry Alert"
         body: |
           Hello Team,
 
-          The following SSL certificates are nearing their expiry:
+          The following SSL certificates are nearing expiry (less than {{ warn_days }} days):
 
           {{ expiring_sites | trim }}
 
-          Full Report:
+          Full SSL Scan Report:
           {{ final_report }}
 
           Regards,
-          SSL Monitoring System ✅
+          SSL Monitoring System

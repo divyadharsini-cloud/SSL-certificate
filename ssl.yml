@@ -1,12 +1,12 @@
 ---
-- name: Check SSL expiry (simple clean output)
+- name: Check SSL expiry (clean plain output)
   hosts: localhost
   gather_facts: no
 
   vars:
     sites:
       - awx.aravind.org
-    warn_days: 365
+    warn_days: 30
 
   tasks:
     - name: Get SSL expiry in days
@@ -15,17 +15,24 @@
               | openssl x509 -noout -enddate | cut -d= -f2)
         end_seconds=$(date -d "$end" +%s)
         now_seconds=$(date +%s)
-        echo $(( (end_seconds - now_seconds) / 86400 ))
-      register: ssl_results
+        echo "{{ item }}:$(( (end_seconds - now_seconds) / 86400 ))"
+      register: results
       loop: "{{ sites }}"
 
-    - name: Print clean results
+    - name: Print clean summary lines
+      shell: |
+        echo "{{ item.stdout.split(':')[0] }}: {{ item.stdout.split(':')[1] }} days left"
+      loop: "{{ results.results }}"
+      register: cleaned
+      changed_when: false
+
+    - name: Display final simple output
       debug:
-        msg: "{{ item.item }} → {{ item.stdout }} days remaining"
-      loop: "{{ ssl_results.results }}"
+        msg: "{{ item.stdout }}"
+      loop: "{{ cleaned.results }}"
 
     - name: Alert if expiring soon
       fail:
-        msg: "⚠️ {{ item.item }} certificate expires in {{ item.stdout }} days!"
-      when: item.stdout | int < warn_days
-      loop: "{{ ssl_results.results }}"
+        msg: "⚠️ {{ item.stdout.split(':')[0] }} expires in {{ item.stdout.split(':')[1] }} days!"
+      when: (item.stdout.split(':')[1] | int) < warn_days
+      loop: "{{ cleaned.results }}"

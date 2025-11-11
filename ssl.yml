@@ -5,7 +5,7 @@
 
   vars:
     sites:
-      - https://awx.aravind.org/
+      - awx.aravind.org
     warn_days: 30   # alert threshold
 
   tasks:

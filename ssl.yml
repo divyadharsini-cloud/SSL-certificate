@@ -6,7 +6,7 @@
   vars:
     sites:
       - awx.aravind.org
-    warn_days: 30   # alert threshold
+    warn_days: 365   # alert threshold
 
   tasks:
     - name: Get SSL expiry

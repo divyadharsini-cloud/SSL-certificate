@@ -10,6 +10,7 @@
       - elk-stack.aravind.org
       - uatredcap.aravind.org
       - auroitech.org
+      - laico.org
     warn_days: 30
     notification_recipients: "divyadharsini@aravind.org,srinisudhan.balaji@aravind.org"
 

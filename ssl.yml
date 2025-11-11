@@ -5,10 +5,7 @@
 
   vars:
     sites:
-      - awx.aravind.org
       - google.com
-      - uatredcap.aravind.org
-      - aecsredap.aravind.org
     warn_days: 365
       
   tasks:

@@ -1,0 +1,31 @@
+---
+- name: Check SSL expiry
+  hosts: localhost
+  gather_facts: no
+
+  vars:
+    sites:
+      - https://awx.aravind.org/
+    warn_days: 30   # alert threshold
+
+  tasks:
+    - name: Get SSL expiry
+      shell: |
+        end=$(echo | openssl s_client -servername {{ item }} -connect {{ item }}:443 2>/dev/null \
+              | openssl x509 -noout -enddate | cut -d= -f2)
+        end_seconds=$(date -d "$end" +%s)
+        now_seconds=$(date +%s)
+        echo $(( (end_seconds - now_seconds) / 86400 ))
+      register: result
+      loop: "{{ sites }}"
+
+    - name: Show results
+      debug:
+        msg: "{{ item.item }} expires in {{ item.stdout }} days"
+      loop: "{{ result.results }}"
+
+    - name: Fail if nearing expiry
+      fail:
+        msg: "{{ item.item }} certificate expires in {{ item.stdout }} days!"
+      when: item.stdout | int < warn_days
+      loop: "{{ result.results }}"

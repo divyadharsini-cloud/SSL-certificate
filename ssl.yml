@@ -1,15 +1,14 @@
 ---
-- name: Check SSL expiry (consolidated clean output)
+- name: Check SSL expiry (clean plain output)
   hosts: localhost
   gather_facts: no
 
   vars:
     sites:
       - awx.aravind.org
-    warn_days: 365
 
   tasks:
-    - name: Get SSL expiry days
+    - name: Check SSL expiry and prepare clean output
       shell: |
         end=$(echo | openssl s_client -servername {{ item }} -connect {{ item }}:443 2>/dev/null \
               | openssl x509 -noout -enddate | cut -d= -f2)
@@ -18,18 +17,10 @@
         days_left=$(( (end_seconds - now_seconds) / 86400 ))
         echo "{{ item }}: ${days_left} days left"
       loop: "{{ sites }}"
-      register: ssl_raw
+      register: result
       changed_when: false
 
-    - name: Initialize report header
-      set_fact:
-        ssl_report: "SSL Expiry Report\n-----------------"
-
-    - name: Build consolidated output
-      set_fact:
-        ssl_report: "{{ ssl_report }}\n{{ item.stdout }}"
-      loop: "{{ ssl_raw.results }}"
-
-    - name: Print final consolidated output
-      debug:
-        msg: "{{ ssl_report }}"
+    - name: Print clean final output only
+      ansible.builtin.debug:
+        msg: "{{ item.stdout }}"
+      loop: "{{ result.results }}"

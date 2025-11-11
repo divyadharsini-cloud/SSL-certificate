@@ -1,5 +1,5 @@
 ---
-- name: Check SSL expiry (robust + accurate)
+- name: Check SSL expiry (always send report email)
   hosts: localhost
   gather_facts: no
 
@@ -46,30 +46,28 @@
           SSL Expiry Report
           -----------------
           {% for r in ssl_raw.results %}
-          {% set parts = r.stdout.split('|') %}
-          {% if parts[1] == 'OK' %}
-          {{ parts[0] }}: {{ parts[2] }} days left (expires: {{ parts[3] }})
+          {% set p = r.stdout.split('|') %}
+          {% if p[1] == 'OK' %}
+          {{ p[0] }}: {{ p[2] }} days left (expires: {{ p[3] }})
           {% else %}
-          {{ parts[0] }}: {{ parts[2] }}
+          {{ p[0] }}: ERROR - {{ p[2] }}
           {% endif %}
           {% endfor %}
-
         expiring_sites: |
           {% for r in ssl_raw.results %}
-          {% set parts = r.stdout.split('|') %}
-          {% if parts[1] == 'OK' and (parts[2]|int) < warn_days %}
-          {{ parts[0] }}: {{ parts[2] }} days left
+          {% set p = r.stdout.split('|') %}
+          {% if p[1] == 'OK' and (p[2]|int) < warn_days %}
+          {{ p[0] }}: {{ p[2] }} days left
+          {% elif p[1] == 'ERROR' %}
+          {{ p[0] }}: {{ p[2] }}
           {% endif %}
           {% endfor %}
 
     - name: Show final report
       debug:
-        msg: "{{ final_report }}"
+        var: final_report
 
-    - name: Send alert email when any certificate is near expiry
-      when: expiring_sites | trim != ""
-      run_once: true
-      delegate_to: localhost
+    - name: Always send SSL report email
       community.general.mail:
         host: smtp.gmail.com
         port: 587
@@ -78,15 +76,19 @@
         password: "{{ lookup('env','EMAIL_PASSWORD') }}"
         to: "{{ notification_recipients }}"
         from: "{{ lookup('env','EMAIL_USER') }}"
-        subject: "⚠️ SSL Certificate Expiry Alert"
+        subject: "SSL Certificate Health Report"
         body: |
           Hello Team,
 
-          The following SSL certificates are nearing expiry (less than {{ warn_days }} days):
+          {% if expiring_sites | trim == "" %}
+          ✅ All certificates are valid and above {{ warn_days }} days from expiry.
+          {% else %}
+          ⚠️ The following SSL certificates require attention:
 
           {{ expiring_sites | trim }}
+          {% endif %}
 
-          Full SSL Scan Report:
+          Full SSL Report:
           {{ final_report }}
 
           Regards,

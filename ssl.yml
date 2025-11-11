@@ -1,38 +1,32 @@
 ---
-- name: Check SSL expiry (clean plain output)
+- name: Check SSL expiry (consolidated clean output)
   hosts: localhost
   gather_facts: no
 
   vars:
     sites:
       - awx.aravind.org
-    warn_days: 30
 
   tasks:
-    - name: Get SSL expiry in days
+    - name: Get SSL expiry days
       shell: |
         end=$(echo | openssl s_client -servername {{ item }} -connect {{ item }}:443 2>/dev/null \
               | openssl x509 -noout -enddate | cut -d= -f2)
         end_seconds=$(date -d "$end" +%s)
         now_seconds=$(date +%s)
-        echo "{{ item }}:$(( (end_seconds - now_seconds) / 86400 ))"
-      register: results
+        days_left=$(( (end_seconds - now_seconds) / 86400 ))
+        echo "{{ item }}: ${days_left} days left"
       loop: "{{ sites }}"
-
-    - name: Print clean summary lines
-      shell: |
-        echo "{{ item.stdout.split(':')[0] }}: {{ item.stdout.split(':')[1] }} days left"
-      loop: "{{ results.results }}"
-      register: cleaned
+      register: ssl_raw
       changed_when: false
 
-    - name: Display final simple output
-      debug:
-        msg: "{{ item.stdout }}"
-      loop: "{{ cleaned.results }}"
+    - name: Combine results into one clean string
+      set_fact:
+        ssl_report: |
+          {{ ssl_report | default('SSL Expiry Report\n-----------------') }}
+          {{ item.stdout }}
+      loop: "{{ ssl_raw.results }}"
 
-    - name: Alert if expiring soon
-      fail:
-        msg: "⚠️ {{ item.stdout.split(':')[0] }} expires in {{ item.stdout.split(':')[1] }} days!"
-      when: (item.stdout.split(':')[1] | int) < warn_days
-      loop: "{{ cleaned.results }}"
+    - name: Print final consolidated output
+      debug:
+        msg: "{{ ssl_report }}"

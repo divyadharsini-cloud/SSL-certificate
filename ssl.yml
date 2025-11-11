@@ -6,6 +6,7 @@
   vars:
     sites:
       - awx.aravind.org
+    warn_days: 365
 
   tasks:
     - name: Get SSL expiry days

@@ -9,7 +9,8 @@
       - google.com
 
   tasks:
-    - name: Check SSL expiry and prepare clean output
+
+    - name: Check SSL expiry and get days left
       shell: |
         end=$(echo | openssl s_client -servername {{ item }} -connect {{ item }}:443 2>/dev/null \
               | openssl x509 -noout -enddate | cut -d= -f2)
@@ -18,10 +19,18 @@
         days_left=$(( (end_seconds - now_seconds) / 86400 ))
         echo "{{ item }}: ${days_left} days left"
       loop: "{{ sites }}"
-      register: result
+      register: ssl_results
       changed_when: false
 
-    - name: Print clean final output only
-      ansible.builtin.debug:
-        msg: "{{ item.stdout }}"
-      loop: "{{ result.results }}"
+    - name: Combine into one clean report
+      set_fact:
+        final_output: |
+          SSL Expiry Report
+          -----------------
+          {% for item in ssl_results.results %}
+          {{ item.stdout }}
+          {% endfor %}
+
+    - name: Print final clean output only
+      debug:
+        msg: "{{ final_output }}"

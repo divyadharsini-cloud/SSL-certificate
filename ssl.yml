@@ -21,7 +21,7 @@
       loop: "{{ sites }}"
       changed_when: false
 
-    - name: Combine into single clean output
+    - name: Combine into single clean report
       set_fact:
         final_report: |
           SSL Expiry Report
@@ -30,6 +30,10 @@
           {{ r.stdout }}
           {% endfor %}
 
-    - name: Print final clean output only
-      debug:
-        var: final_report
+    - name: Print final clean output only (Real multiline output)
+      ansible.builtin.shell: |
+        echo "{{ final_report }}"
+      register: report_output
+
+    - debug:
+        msg: "{{ report_output.stdout }}"

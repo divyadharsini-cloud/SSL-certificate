@@ -9,7 +9,7 @@
       - awx.aravind.org
       - uatredcap.aravind.org
     warn_days: 30
-    notification_recipients: "divyadharsini@aravind.org,karthikeyan.sudhakar@aravind.org"
+    notification_recipients: "divyadharsini@aravind.org,karthikeyan.sudhakar@aravind.org,srinisudhan.balaji@aravind.org"
 
   tasks:
     - name: Check SSL expiry and get days left

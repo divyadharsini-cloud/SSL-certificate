@@ -9,7 +9,6 @@
       - google.com
 
   tasks:
-
     - name: Check SSL expiry and get days left
       shell: |
         end=$(echo | openssl s_client -servername {{ item }} -connect {{ item }}:443 2>/dev/null \
@@ -18,19 +17,19 @@
         now_seconds=$(date +%s)
         days_left=$(( (end_seconds - now_seconds) / 86400 ))
         echo "{{ item }}: ${days_left} days left"
+      register: result
       loop: "{{ sites }}"
-      register: ssl_results
       changed_when: false
 
-    - name: Combine into one clean report
+    - name: Combine into single clean output
       set_fact:
-        final_output: |
+        final_report: |
           SSL Expiry Report
           -----------------
-          {% for item in ssl_results.results %}
-          {{ item.stdout }}
+          {% for r in result.results %}
+          {{ r.stdout }}
           {% endfor %}
 
     - name: Print final clean output only
       debug:
-        msg: "{{ final_output }}"
+        msg: "{{ final_report }}"

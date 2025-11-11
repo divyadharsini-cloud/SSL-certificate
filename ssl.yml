@@ -8,6 +8,7 @@
       - google.com
       - awx.aravind.org
       - uatredcap.aravind.org
+      - elk-stack.aravind.org
     warn_days: 30
     notification_recipients: "divyadharsini@aravind.org,karthikeyan.sudhakar@aravind.org,srinisudhan.balaji@aravind.org"
 
